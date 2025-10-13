@@ -29,4 +29,8 @@ COPY php.ini /usr/local/etc/php/conf.d/zz-multilotka.ini
 
 WORKDIR /app
 
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["php-fpm"]

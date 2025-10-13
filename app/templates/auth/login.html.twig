@@ -1,0 +1,102 @@
+{% extends 'layout/base.html.twig' %}
+
+{% block body %}
+    <main class="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-16">
+        <section class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl">
+            <header class="mb-8 text-center">
+                <h1 class="text-3xl font-semibold tracking-tight text-slate-100">
+                    Zaloguj się
+                </h1>
+                <p class="mt-2 text-sm text-slate-400">
+                    Dostęp do panelu analitycznego Multilotka.
+                </p>
+            </header>
+
+            {% if successMessage is defined and successMessage %}
+                <div class="mb-6 rounded-xl border border-lime-500/40 bg-lime-500/10 px-4 py-3 text-sm text-lime-200">
+                    {{ successMessage }}
+                </div>
+            {% endif %}
+
+            {% if errors is defined and errors %}
+                <div class="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                    <ul class="list-disc space-y-1 pl-4">
+                        {% for error in errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            {% set formOld = old|default({}) %}
+
+            <form method="post" action="/login" class="space-y-6" x-data="{ showPassword: false }">
+                <div>
+                    <label for="email" class="text-sm font-medium text-slate-200">
+                        Adres e-mail
+                    </label>
+                    <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/60"
+                        placeholder="jan.kowalski@example.com"
+                        autocomplete="email"
+                        value="{{ formOld.email|default('') }}"
+                        required
+                    >
+                </div>
+
+                <div>
+                    <label for="password" class="text-sm font-medium text-slate-200">
+                        Hasło
+                    </label>
+                    <div class="relative mt-2">
+                        <input
+                            :type="showPassword ? 'text' : 'password'"
+                            id="password"
+                            name="password"
+                            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 pr-12 text-sm text-slate-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/60"
+                            placeholder="••••••••"
+                            autocomplete="current-password"
+                            required
+                        >
+                        <button
+                            type="button"
+                            class="absolute inset-y-0 right-0 flex items-center px-4 text-xs text-lime-400"
+                            @click="showPassword = !showPassword"
+                        >
+                            <span x-text="showPassword ? 'Ukryj' : 'Pokaż'"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between text-sm text-slate-400">
+                    <label class="inline-flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            name="remember"
+                            class="h-4 w-4 rounded border border-slate-700 bg-slate-900 text-lime-400 focus:ring-lime-500"
+                            value="1"
+                        >
+                        Zapamiętaj mnie
+                    </label>
+                    <a href="#" class="font-medium text-lime-400 hover:text-lime-300">
+                        Nie pamiętam hasła
+                    </a>
+                </div>
+
+                <button type="submit" class="w-full rounded-lg bg-lime-400 px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-lime-300">
+                    Zaloguj się
+                </button>
+            </form>
+
+            <p class="mt-6 text-center text-sm text-slate-400">
+                Nie masz konta?
+                <a href="/register" class="font-semibold text-lime-400 hover:text-lime-300">
+                    Utwórz je teraz
+                </a>
+            </p>
+        </section>
+    </main>
+{% endblock %}

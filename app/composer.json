@@ -1,0 +1,21 @@
+{
+    "name": "multilotka/app",
+    "description": "Analizy losowań LOTTO",
+    "type": "project",
+    "require": {
+        "php": "^8.1",
+        "doctrine/dbal": "^3.8",
+        "doctrine/migrations": "^3.7",
+        "symfony/mailer": "^7.0",
+        "symfony/mime": "^7.0",
+        "twig/twig": "^3.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "Multilotka\\": "src/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit --testdox"
+    }
+}

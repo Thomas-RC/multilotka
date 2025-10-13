@@ -1,0 +1,158 @@
+{% extends 'layout/base.html.twig' %}
+
+{% block body %}
+    <main class="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-16">
+        <section class="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900/70 p-10 shadow-2xl">
+            <header class="mb-8 text-center">
+                <h1 class="text-3xl font-semibold tracking-tight text-slate-100">
+                    Załóż konto Multilotka
+                </h1>
+                <p class="mt-2 text-sm text-slate-400">
+                    Zyskaj dostęp do zaawansowanych analiz, alertów i raportów Lotto.
+                </p>
+            </header>
+
+            {% set formOld = old|default({}) %}
+            {% set formErrors = errors|default([]) %}
+
+            {% if formErrors %}
+                <div class="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                    <ul class="list-disc space-y-1 pl-4">
+                        {% for error in formErrors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <form method="post" action="/register" class="grid gap-6 md:grid-cols-2">
+                <div class="md:col-span-1">
+                    <label for="firstName" class="text-sm font-medium text-slate-200">
+                        Imię
+                    </label>
+                    <input
+                        id="firstName"
+                        name="firstName"
+                        type="text"
+                        class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/60"
+                        placeholder="Jan"
+                        autocomplete="given-name"
+                        value="{{ formOld.firstName|default('') }}"
+                        required
+                    >
+                </div>
+
+                <div class="md:col-span-1">
+                    <label for="lastName" class="text-sm font-medium text-slate-200">
+                        Nazwisko
+                    </label>
+                    <input
+                        id="lastName"
+                        name="lastName"
+                        type="text"
+                        class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/60"
+                        placeholder="Kowalski"
+                        autocomplete="family-name"
+                        value="{{ formOld.lastName|default('') }}"
+                        required
+                    >
+                </div>
+
+                <div class="md:col-span-2">
+                    <label for="email" class="text-sm font-medium text-slate-200">
+                        Adres e-mail
+                    </label>
+                    <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/60"
+                        placeholder="jan.kowalski@example.com"
+                        autocomplete="email"
+                        value="{{ formOld.email|default('') }}"
+                        required
+                    >
+                </div>
+
+                <div class="md:col-span-1" x-data="{ show: false }">
+                    <label for="password" class="text-sm font-medium text-slate-200">
+                        Hasło
+                    </label>
+                    <div class="relative mt-2">
+                        <input
+                            :type="show ? 'text' : 'password'"
+                            id="password"
+                            name="password"
+                            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 pr-12 text-sm text-slate-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/60"
+                            placeholder="Minimum 12 znaków"
+                            required
+                        >
+                        <button type="button" class="absolute inset-y-0 right-0 flex items-center px-4 text-xs text-lime-400" @click="show = !show">
+                            <span x-text="show ? 'Ukryj' : 'Pokaż'"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="md:col-span-1">
+                    <label for="passwordConfirmation" class="text-sm font-medium text-slate-200">
+                        Powtórz hasło
+                    </label>
+                    <input
+                        id="passwordConfirmation"
+                        name="passwordConfirmation"
+                        type="password"
+                        class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/60"
+                        placeholder="Potwierdź hasło"
+                        required
+                    >
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="text-sm font-medium text-slate-200">
+                        Zainteresowania
+                    </label>
+                    <div class="mt-3 grid gap-3 md:grid-cols-3">
+                        <label class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-2 text-sm text-slate-200">
+                            <input type="checkbox" class="h-4 w-4 rounded border border-slate-600 bg-slate-900 text-lime-400 focus:ring-lime-500">
+                            Trendy losowań
+                        </label>
+                        <label class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-2 text-sm text-slate-200">
+                            <input type="checkbox" class="h-4 w-4 rounded border border-slate-600 bg-slate-900 text-lime-400 focus:ring-lime-500">
+                            Strategie systemowe
+                        </label>
+                        <label class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-2 text-sm text-slate-200">
+                            <input type="checkbox" class="h-4 w-4 rounded border border-slate-600 bg-slate-900 text-lime-400 focus:ring-lime-500">
+                            Powiadomienia o losowaniach
+                        </label>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="flex items-start gap-3 text-sm text-slate-400">
+                        <input
+                            type="checkbox"
+                            name="terms"
+                            class="mt-1 h-4 w-4 rounded border border-slate-600 bg-slate-900 text-lime-400 focus:ring-lime-500"
+                            value="1"
+                            required
+                        >
+                        Akceptuję regulamin oraz politykę prywatności Multilotka.
+                    </label>
+                </div>
+
+                <div class="md:col-span-2">
+                    <button type="submit" class="w-full rounded-lg bg-lime-400 px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-lime-300">
+                        Utwórz konto
+                    </button>
+                </div>
+            </form>
+
+            <p class="mt-6 text-center text-sm text-slate-400">
+                Masz już konto?
+                <a href="/login" class="font-semibold text-lime-400 hover:text-lime-300">
+                    Zaloguj się
+                </a>
+            </p>
+        </section>
+    </main>
+{% endblock %}
