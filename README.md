@@ -1,0 +1,2 @@
+# multilotka
+Analizy losowań LOTTO
