@@ -1,0 +1,137 @@
+version: "3.9"
+
+services:
+  php:
+    build:
+      context: ./php
+    image: mlt-php:latest
+    container_name: mlt-php
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../:/app
+    env_file:
+      - ../.env
+    depends_on:
+      - db
+      - dbh
+    networks:
+      - mlt-internal
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: mlt-nginx
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    volumes:
+      - ../:/app:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - php
+    networks:
+      - mlt-internal
+
+  db:
+    image: mariadb:11.2
+    container_name: mlt-db
+    restart: unless-stopped
+    environment:
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-rootpassword}
+      - MARIADB_DATABASE=${MARIADB_DATABASE:-multilotka}
+      - MARIADB_USER=${MARIADB_USER:-multilotka}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD:-multilotka}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mlt-mariadb-data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d
+      - ./db/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    networks:
+      - mlt-internal
+
+  cron:
+    build:
+      context: ./cron
+    container_name: mlt-cron
+    restart: unless-stopped
+    volumes:
+      - ../:/var/www
+      - ./log/cron:/var/log/cron
+    environment:
+      - TZ=Europe/Warsaw
+    depends_on:
+      - php
+      - db
+    networks:
+      - mlt-internal
+
+  etl:
+    image: python:3.11-slim
+    container_name: mlt-etl
+    restart: unless-stopped
+    working_dir: /opt/multilotka
+    command: ["sleep", "infinity"]
+    volumes:
+      - ../:/opt/multilotka
+    env_file:
+      - ../.env
+    depends_on:
+      - db
+      - dbh
+    networks:
+      - mlt-internal
+
+  dbh:
+    image: clickhouse/clickhouse-server:23.8
+    container_name: mlt-dbh
+    restart: unless-stopped
+    environment:
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-multilotka}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-multilotka}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - mlt-clickhouse-data:/var/lib/clickhouse
+      - mlt-clickhouse-logs:/var/log/clickhouse-server
+    networks:
+      - mlt-internal
+
+  phpmyadmin:
+    image: phpmyadmin:5.2-apache
+    container_name: mlt-phpmyadmin
+    restart: unless-stopped
+    environment:
+      - PMA_HOST=db
+      - PMA_PORT=3306
+      - PMA_USER=${MARIADB_USER:-multilotka}
+      - PMA_PASSWORD=${MARIADB_PASSWORD:-multilotka}
+    ports:
+      - "8082:80"
+    depends_on:
+      - db
+    networks:
+      - mlt-internal
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mlt-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      - MP_MAX_MESSAGES=5000
+    networks:
+      - mlt-internal
+
+volumes:
+  mlt-mariadb-data:
+  mlt-clickhouse-data:
+  mlt-clickhouse-logs:
+
+networks:
+  mlt-internal:
+    driver: bridge
