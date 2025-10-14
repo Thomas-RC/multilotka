@@ -15,7 +15,15 @@
             "Multilotka\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Multilotka\\Tests\\": "tests/"
+        }
+    },
     "scripts": {
         "test": "vendor/bin/phpunit --testdox"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
     }
 }
