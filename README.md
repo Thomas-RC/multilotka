@@ -31,6 +31,11 @@ Multilotka Analytics is an administrative platform that prepares Multi Multi lot
 5. Apply database schema updates: `docker exec mlt-php ./vendor/bin/doctrine-migrations migrations:migrate --no-interaction`.
 6. Run the web app via Nginx on http://localhost:8081 and load Mailpit at http://localhost:8025 when testing email flows.
 
+### ClickHouse Access Control
+- ClickHouse startuje z włączonym Access Control (`CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1`) i wykonuje plik `docker/dbh/init/00_access_setup.sql`, który tworzy użytkownika `multilotka` w katalogu Access Control.
+- Hasło użytkownika i nazwa (domyślnie `multilotka`/`multilotka`) muszą odpowiadać wpisom w `.env`, z których korzysta aplikacja. Przy zmianie hasła zaktualizuj zarówno plik SQL, jak i zmienne środowiskowe.
+- Skrypt `docker/dbh/init/01_create_schema.sql` nadaje role `etl_writer`, `analytics_reader` oraz polityki wierszy; dlatego zachowuj kolejność plików inicjalizacyjnych.
+
 ## 5. Available Scripts
 - `docker exec mlt-php composer test` — execute the full PHPUnit suite with human-readable output.
 - `docker exec mlt-php ./vendor/bin/doctrine-migrations migrations:migrate` — synchronize database structures with the latest migrations.

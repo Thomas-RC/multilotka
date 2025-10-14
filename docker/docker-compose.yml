@@ -87,8 +87,6 @@ services:
     container_name: mlt-dbh
     restart: unless-stopped
     environment:
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-multilotka}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-multilotka}
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     ports:
       - "8123:8123"
@@ -96,6 +94,7 @@ services:
     volumes:
       - mlt-clickhouse-data:/var/lib/clickhouse
       - mlt-clickhouse-logs:/var/log/clickhouse-server
+      - ./dbh/init:/docker-entrypoint-initdb.d:ro
     networks:
       - mlt-internal
 

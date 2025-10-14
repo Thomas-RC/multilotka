@@ -19,14 +19,21 @@ final class Version202409050001 extends AbstractMigration
         $this->addSql(
             <<<SQL
             CREATE TABLE users (
-                id INT AUTO_INCREMENT NOT NULL,
+                id BIGINT UNSIGNED AUTO_INCREMENT NOT NULL,
                 first_name VARCHAR(80) NOT NULL,
                 last_name VARCHAR(80) NOT NULL,
-                email VARCHAR(180) NOT NULL,
-                password_hash VARCHAR(255) NOT NULL,
-                created_at DATETIME NOT NULL,
-                updated_at DATETIME NOT NULL,
+                email VARCHAR(191) NOT NULL,
+                password_hash CHAR(60) NOT NULL,
+                confirmation_token CHAR(64) DEFAULT NULL,
+                status ENUM('pending','active','suspended') NOT NULL DEFAULT 'pending',
+                is_admin TINYINT(1) NOT NULL DEFAULT 0,
+                confirmed_at DATETIME DEFAULT NULL,
+                last_login_at DATETIME DEFAULT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE INDEX UNIQ_users_email (email),
+                UNIQUE INDEX UNIQ_users_confirmation_token (confirmation_token),
+                INDEX IDX_users_status (status),
                 PRIMARY KEY(id)
             ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB
             SQL
