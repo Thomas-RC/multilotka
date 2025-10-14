@@ -6,6 +6,19 @@ APP_DIR="/app/app"
 
 if [ -d "$APP_DIR" ]; then
     cd "$APP_DIR"
+    
+    # Automatyczna instalacja zależności Composer
+    if [ -f "composer.json" ]; then
+        echo "Checking Composer dependencies..."
+        
+        if [ ! -d "vendor" ]; then
+            echo "Vendor directory not found. Running composer install..."
+            composer install --no-interaction --prefer-dist
+        else
+            echo "Vendor directory exists. Checking for updates..."
+            composer install --no-interaction --prefer-dist
+        fi
+    fi
 fi
 
 if [ -f "$APP_DIR/vendor/autoload.php" ]; then
