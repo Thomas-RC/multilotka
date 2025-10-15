@@ -26,7 +26,7 @@
   <prd_planning_summary>
   Aplikacja Multilotka Analytics (MVP) rozwiązuje problem braku zintegrowanego narzędzia do bezpiecznego importu danych losowań, generowania kombinacji i udostępniania rekomendacji dla
   administratora Multi Multi. Kluczowe funkcjonalności obejmują: landing page z CTA, rejestrację z e-mailową aktywacją i resetem hasła, logowanie/wylogowanie, ręczne wgrywanie pliku
-  ml.txt ze stałym formatem (poprzedni plik usuwany), pełny/przyrostowy import uruchamiany z panelu przy pomocy kontenera ETL w Pythonie, monitorowanie importu (status, procent, logi)
+  ml.txt ze stałym formatem `n. DD.MM.RRRR l1,l2,...,l20` (poprzedni plik usuwany), pełny/przyrostowy import uruchamiany z panelu przy pomocy kontenera ETL w Pythonie, monitorowanie importu (status, procent, logi)
   w dashboardzie, ranking kombinacji, generator dziesięciu tipów oparty na całej bazie oraz eksport kombinacji. Logowanie zdarzeń trafi do bazy MySQL; komunikaty o błędach ETL będą
   prezentowane jako banery.
 

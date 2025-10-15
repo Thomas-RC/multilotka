@@ -36,6 +36,17 @@ Multilotka Analytics is an administrative platform that prepares Multi Multi lot
 - Hasło użytkownika i nazwa (domyślnie `multilotka`/`multilotka`) muszą odpowiadać wpisom w `.env`, z których korzysta aplikacja. Przy zmianie hasła zaktualizuj zarówno plik SQL, jak i zmienne środowiskowe.
 - Skrypt `docker/dbh/init/01_create_schema.sql` nadaje role `etl_writer`, `analytics_reader` oraz polityki wierszy; dlatego zachowuj kolejność plików inicjalizacyjnych.
 
+### Import plików ml.txt
+- Formularz w panelu akceptuje wyłącznie pliki tekstowe w formacie:
+  ```
+  1. DD.MM.RRRR n1,n2,...,n20
+  2. DD.MM.RRRR n1,n2,...,n20
+  ...
+  ```
+  Liczby muszą być unikalne i mieścić się w zakresie 1–80.
+- Po wgraniu plik trafia do `storage/uploads`, a poprzednia wersja jest automatycznie archiwizowana i usuwana z dysku.
+- Jeżeli plik nie przejdzie walidacji (np. niewłaściwa liczba wartości, puste linie), panel pokaże komunikat błędu i nic nie zostanie zapisane.
+
 ## 5. Available Scripts
 - `docker exec mlt-php composer test` — execute the full PHPUnit suite with human-readable output.
 - `docker exec mlt-php ./vendor/bin/doctrine-migrations migrations:migrate` — synchronize database structures with the latest migrations.

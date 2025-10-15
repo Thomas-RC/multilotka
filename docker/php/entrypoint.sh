@@ -6,6 +6,13 @@ APP_DIR="/app/app"
 
 if [ -d "$APP_DIR" ]; then
     cd "$APP_DIR"
+
+    STORAGE_DIR="$APP_DIR/storage"
+    UPLOADS_DIR="$STORAGE_DIR/uploads"
+
+    mkdir -p "$UPLOADS_DIR"
+    chown -R www-data:www-data "$STORAGE_DIR"
+    chmod -R 775 "$STORAGE_DIR"
     
     # Automatyczna instalacja zależności Composer
     if [ -f "composer.json" ]; then

@@ -10,6 +10,7 @@ use Multilotka\Controller\HomeController;
 use Multilotka\Controller\LoginController;
 use Multilotka\Controller\LogoutController;
 use Multilotka\Controller\RegistrationController;
+use Multilotka\Controller\UploadController;
 use Twig\Environment;
 
 final class Application
@@ -47,6 +48,9 @@ final class Application
             ],
             '/dashboard' => [
                 'GET' => [DashboardController::class, 'index'],
+            ],
+            '/dashboard/upload' => [
+                'POST' => [UploadController::class, 'handle'],
             ],
         ];
     }

@@ -16,7 +16,7 @@ Multilotka Analytics to aplikacja webowa wspierająca pojedynczego administrator
 - FR-05 Mechanizm resetu hasła umożliwia wysłanie linku z tokenem i ustawienie nowego hasła; token jest jednorazowy i kontroluje czas ważności.
 - FR-06 Wylogowanie usuwa sesję, czyści tymczasowe dane (np. ścieżkę pliku) i przekierowuje na stronę logowania z informacją o sukcesie.
 - FR-07 Dashboard po zalogowaniu pokazuje ostatni wgrany plik, datę ostatniego udanego importu, liczbę kombinacji oraz powiadamia, jeśli plik zawiera nowsze losowania niż baza.
-- FR-08 Administrator może ręcznie wgrać plik ml.txt (stały format: numer losowania, data, ciąg 20 liczb oddzielonych przecinkami); system weryfikuje rozszerzenie, MIME i strukturę każdej linii, usuwa poprzedni plik i zapisuje nowy w storage/uploads.
+- FR-08 Administrator może ręcznie wgrać plik ml.txt (stały format wiersza: `n. DD.MM.RRRR l1,l2,...,l20`, gdzie każda liczba mieści się w zakresie 1–80 i nie powtarza się); system weryfikuje rozszerzenie, MIME i strukturę każdej linii, usuwa poprzedni plik i zapisuje nowy w storage/uploads.
 - FR-09 Panel przechowuje ścieżkę do ostatniego pliku w sesji i umożliwia podgląd lokalizacji oraz daty pliku.
 - FR-10 Użytkownik może uruchomić proces ETL poprzez wskazanie trybu importu (pełny lub przyrostowy); domyślnie wybierany jest ostatni użyty tryb.
 - FR-11 Aplikacja wywołuje endpoint kontenera ETL, przekazując ścieżkę pliku, tryb importu i oczekuje odpowiedzi JSON zawierającej potwierdzenie lub błąd; w razie braku pliku zwracany jest komunikat o błędzie.
@@ -36,7 +36,7 @@ Multilotka Analytics to aplikacja webowa wspierająca pojedynczego administrator
 - System nie realizuje płatności, sprzedaży kuponów ani integracji z zewnętrznymi usługami poza kontenerem ETL i Mailpit.
 - Brak dedykowanej warstwy bezpieczeństwa sieciowego (VPN, whitelisty IP) i mechanizmów 2FA; ochrona ogranicza się do standardowego logowania.
 - MVP nie obejmuje środowiska staging ani strategii backupu; dane można odtworzyć ponownym importem pliku źródłowego.
-- Import danych jest wyzwalany ręcznie przez administratora i zakłada stały format pliku ml.txt (zmiany formatu wymagają osobnej iteracji).
+- Import danych jest wyzwalany ręcznie przez administratora i zakłada stały format pliku ml.txt (`n. DD.MM.RRRR l1,l2,...,l20`; zmiany formatu wymagają osobnej iteracji).
 
 ## 5. Historyjki użytkowników
 ID: US-001  

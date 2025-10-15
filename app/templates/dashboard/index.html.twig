@@ -33,21 +33,78 @@
                 </div>
             {% endif %}
 
-            <section id="summary" class="grid gap-6 md:grid-cols-3">
+            {% if flashes %}
+                <section class="space-y-3">
+                    {% for key, message in flashes %}
+                        {% set isSuccess = key starts with 'success' %}
+                        {% set content = message is iterable ? message|join(', ') : message %}
+                        <div class="rounded-2xl border px-4 py-3 text-sm {{ isSuccess ? 'border-lime-400/40 bg-lime-400/10 text-lime-200' : 'border-rose-500/40 bg-rose-500/10 text-rose-200' }}">
+                            {{ content }}
+                        </div>
+                    {% endfor %}
+                </section>
+            {% endif %}
+
+            <section id="uploads" class="grid gap-6 lg:grid-cols-2">
                 <article class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
-                    <p class="text-sm uppercase tracking-widest text-slate-500">Średnia trafień</p>
-                    <p class="mt-4 text-4xl font-semibold text-lime-400">2.7</p>
-                    <p class="mt-2 text-sm text-slate-400">Średnie trafienia w symulacjach tygodniowych.</p>
+                    <p class="text-sm uppercase tracking-widest text-slate-500">Ostatni plik TXT</p>
+                    {% if lastUpload %}
+                        {% set startDate = lastUpload.drawDateStart ? lastUpload.drawDateStart|date('d.m.Y') : '—' %}
+                        {% set endDate = lastUpload.drawDateEnd ? lastUpload.drawDateEnd|date('d.m.Y') : '—' %}
+                        <ul class="mt-4 space-y-2 text-sm text-slate-300">
+                            <li>
+                                <span class="text-slate-500">Nazwa pliku:</span>
+                                <span class="font-medium text-slate-100">{{ lastUpload.originalName }}</span>
+                            </li>
+                            <li>
+                                <span class="text-slate-500">Wgrano:</span>
+                                <span>{{ lastUpload.uploadedAt|date('d.m.Y H:i') }}</span>
+                            </li>
+                            <li>
+                                <span class="text-slate-500">Zakres losowań:</span>
+                                <span>{{ startDate }} &rarr; {{ endDate }}</span>
+                            </li>
+                            <li>
+                                <span class="text-slate-500">Liczba rekordów:</span>
+                                <span>{{ lastUpload.rowsTotal }}</span>
+                            </li>
+                        </ul>
+                        <p class="mt-6 text-xs text-slate-500">
+                            Każde nowe wgranie zastępuje poprzedni plik i usuwa go z katalogu <code class="rounded bg-slate-800 px-1">storage/uploads</code>.
+                        </p>
+                    {% else %}
+                        <p class="mt-4 text-sm text-slate-400">
+                            Nie wgrano jeszcze żadnego pliku TXT. Skorzystaj z formularza obok, aby rozpocząć import danych.
+                        </p>
+                    {% endif %}
                 </article>
+
                 <article class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
-                    <p class="text-sm uppercase tracking-widest text-slate-500">Popularne liczby</p>
-                    <p class="mt-4 text-4xl font-semibold text-lime-400">14, 28, 37</p>
-                    <p class="mt-2 text-sm text-slate-400">Najczęściej występujące kombinacje z ostatnich 30 dni.</p>
-                </article>
-                <article class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
-                    <p class="text-sm uppercase tracking-widest text-slate-500">Ostatnia aktualizacja</p>
-                    <p class="mt-4 text-4xl font-semibold text-lime-400">{{ "now"|date("d.m.Y") }}</p>
-                    <p class="mt-2 text-sm text-slate-400">Dane zsynchronizowane z archiwum Lotto.</p>
+                    <h2 class="text-xl font-semibold text-slate-100">Wgraj nowy plik</h2>
+                    <p class="mt-2 text-sm text-slate-400">
+                        Akceptujemy wyłącznie pliki tekstowe (<code class="rounded bg-slate-800 px-1">*.txt</code>) w formacie:
+                        <span class="font-mono text-xs text-slate-300">n. DD.MM.RRRR l1,l2,...,l20</span>.
+                    </p>
+
+                    <form method="POST" action="/dashboard/upload" enctype="multipart/form-data" class="mt-6 space-y-4">
+                        <div>
+                            <label for="drawFile" class="text-sm font-medium text-slate-200">Plik losowań</label>
+                            <input
+                                type="file"
+                                id="drawFile"
+                                name="drawFile"
+                                accept=".txt,text/plain"
+                                required
+                                class="mt-2 block w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
+                            >
+                        </div>
+                        <button
+                            type="submit"
+                            class="rounded-lg bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-lime-300"
+                        >
+                            Wgraj plik
+                        </button>
+                    </form>
                 </article>
             </section>
 
