@@ -124,10 +124,13 @@ Wymagania:
 ## Kontrola dostępu ClickHouse
 
 - Access management włączony (`CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1`)
-- Użytkownik `multilotka` tworzony w `docker/dbh/init/00_access_setup.sql`
-- Role: `etl_writer` (zapis losowań/kombinacji), `analytics_reader` (zapytania tylko do odczytu)
+- Użytkownik `multilotka` tworzony w `docker/dbh/init/00_access_setup.sql` z `DEFAULT ROLE ALL`
+- Role:
+  - `etl_writer`: INSERT i SELECT na `draws`, `draw_combinations`, `import_runs`; ALTER UPDATE na `import_runs`
+  - `analytics_reader`: SELECT na wszystkich tabelach w schemacie `analytics`
 - Polityki wierszy filtrują zapytania tak, by zawierały tylko dane z `import_runs.status='succeeded'`
 - Poświadczenia w `.env` muszą odpowiadać skryptom inicjalizacyjnym SQL
+- **Ważne**: Użytkownik ETL wymaga `DEFAULT ROLE ALL` lub jawnego `SET ROLE` w połączeniu, by aktywować przyznane role
 
 ## Wymagania z PRD/MVP
 
