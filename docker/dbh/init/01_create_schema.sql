@@ -89,8 +89,11 @@ CREATE ROLE IF NOT EXISTS etl_writer;
 CREATE ROLE IF NOT EXISTS analytics_reader;
 
 GRANT INSERT ON analytics.draws TO etl_writer;
+GRANT SELECT ON analytics.draws TO etl_writer;
 GRANT INSERT ON analytics.draw_combinations TO etl_writer;
 GRANT INSERT ON analytics.import_runs TO etl_writer;
+GRANT SELECT ON analytics.import_runs TO etl_writer;
+GRANT ALTER TABLE ON analytics.import_runs TO etl_writer;
 GRANT SELECT ON analytics.* TO analytics_reader;
 
 GRANT etl_writer TO multilotka;

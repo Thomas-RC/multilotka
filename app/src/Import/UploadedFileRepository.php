@@ -36,6 +36,19 @@ final class UploadedFileRepository implements UploadedFileRepositoryInterface
     /**
      * @throws DBALException
      */
+    public function findById(int $id): ?UploadedFileRecord
+    {
+        $row = $this->connection->fetchAssociative(
+            'SELECT * FROM uploaded_files WHERE id = :id LIMIT 1',
+            ['id' => $id],
+        );
+
+        return $row === false ? null : UploadedFileRecord::fromDatabaseRow($row);
+    }
+
+    /**
+     * @throws DBALException
+     */
     public function save(UploadedFileRecord $record): UploadedFileRecord
     {
         $payload = $record->toDatabasePayload();

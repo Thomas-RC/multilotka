@@ -46,6 +46,12 @@ Multilotka Analytics is an administrative platform that prepares Multi Multi lot
   Liczby muszą być unikalne i mieścić się w zakresie 1–80.
 - Po wgraniu plik trafia do `storage/uploads`, a poprzednia wersja jest automatycznie archiwizowana i usuwana z dysku.
 - Jeżeli plik nie przejdzie walidacji (np. niewłaściwa liczba wartości, puste linie), panel pokaże komunikat błędu i nic nie zostanie zapisane.
+- Po uruchomieniu importu panel tworzy wpis w `import_jobs`, zdarzenia w `import_job_events`, a kontener `mlt-etl` uruchamia skrypt `python/run_etl.py`, który przetwarza plik, aktualizuje postęp i zapisuje logi.
+- Każde losowanie trafia do `analytics.draws` (z datą, numerem i surową dwudziestką liczb), a wszystkie pięcioelementowe kombinacje są zapisywane w `analytics.draw_combinations` jako łańcuchy w formacie `04-09-10-16-21` z licznikiem `count = 1`.
+- Metadane ETL lądują w `analytics.import_runs`; statusy są aktualizowane przez worker, dzięki czemu zapytania analityczne filtrują tylko udane przebiegi.
+- Tryb **Pełny import** ponownie wczytuje cały plik i po zakończeniu oznacza wcześniejsze przebiegi w `analytics.import_runs` jako `failed`, co gwarantuje, że dashboard pokazuje wyłącznie najnowszy stan danych.
+- Tryb **Import przyrostowy** pomija losowania, których numer jest mniejszy lub równy najwyższemu numerowi znajdującemu się już w ClickHouse, dzięki czemu kolejne pliki mogą dopisywać jedynie nowe daty.
+- Po zmianach w `docker/python/requirements.txt` wykonaj `docker compose -f docker/docker-compose.yml restart mlt-etl`, aby kontener pobrał świeże zależności Pythona. Aktualne logi importu podejrzysz poleceniem `docker logs -f mlt-etl`.
 
 ## 5. Available Scripts
 - `docker exec mlt-php composer test` — execute the full PHPUnit suite with human-readable output.

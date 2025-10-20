@@ -7,6 +7,7 @@ namespace Multilotka\Core;
 use Doctrine\DBAL\Connection;
 use Multilotka\Controller\DashboardController;
 use Multilotka\Controller\HomeController;
+use Multilotka\Controller\ImportController;
 use Multilotka\Controller\LoginController;
 use Multilotka\Controller\LogoutController;
 use Multilotka\Controller\RegistrationController;
@@ -51,6 +52,12 @@ final class Application
             ],
             '/dashboard/upload' => [
                 'POST' => [UploadController::class, 'handle'],
+            ],
+            '/dashboard/import' => [
+                'POST' => [ImportController::class, 'trigger'],
+            ],
+            '/dashboard/import/status' => [
+                'GET' => [ImportController::class, 'status'],
             ],
         ];
     }

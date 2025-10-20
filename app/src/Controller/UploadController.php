@@ -49,6 +49,10 @@ final class UploadController
             $start = $saved->drawDateStart()?->format('d.m.Y') ?? 'brak danych';
             $end = $saved->drawDateEnd()?->format('d.m.Y') ?? 'brak danych';
 
+            if ($saved->id() !== null) {
+                $this->session->set('last_uploaded_file_id', $saved->id());
+            }
+
             $this->session->flash(
                 'success',
                 sprintf(

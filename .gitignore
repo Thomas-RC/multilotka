@@ -10,4 +10,5 @@ docker/log/cron/
 app/storage/*
 !app/storage/.gitkeep
 !app/storage/uploads/
+app/storage/uploads/*
 !app/storage/uploads/.gitkeep

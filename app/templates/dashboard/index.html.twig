@@ -2,6 +2,11 @@
 
 {% block body %}
     <div class="min-h-screen bg-slate-950">
+        <style>
+            [x-cloak] {
+                display: none !important;
+            }
+        </style>
         <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
             <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
                 <div>
@@ -108,6 +113,123 @@
                 </article>
             </section>
 
+{% if lastUpload %}
+                <section
+                    id="import"
+                    class="grid gap-6 lg:grid-cols-2"
+                    x-data='importStatusComponent({
+                        pollUrl: {{ importStatusUrl|json_encode|raw }},
+                        initialJob: {{ lastImportJob ? lastImportJob|json_encode|raw : 'null' }},
+                        initialEvents: {{ importEvents|json_encode|raw }},
+                        selectedMode: {{ selectedImportMode|json_encode|raw }}
+                    })'
+                    x-init="init()"
+                >
+                    <article class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
+                        <h2 class="text-xl font-semibold text-slate-100">Uruchom import ETL</h2>
+                        <p class="mt-2 text-sm text-slate-400">
+                            Wybierz tryb importu dla pliku <span class="font-medium text-slate-100">{{ lastUpload.originalName }}</span>.
+                        </p>
+
+                        <form method="POST" action="/dashboard/import" class="mt-6 space-y-4">
+                            <input type="hidden" name="file_id" value="{{ lastUpload.id }}">
+
+                            <div class="space-y-2">
+                                {% for mode in importModes %}
+                                    <label class="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-200 transition hover:border-lime-400 hover:text-lime-200">
+                                        <input
+                                            type="radio"
+                                            name="mode"
+                                            value="{{ mode.value }}"
+                                            x-model="selectedMode"
+                                            class="h-4 w-4 border-slate-600 text-lime-400 focus:ring-lime-400"
+                                            required
+                                        >
+                                        <span>{{ mode.label }}</span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+
+                            <button
+                                type="submit"
+                                class="rounded-lg bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-lime-300 disabled:cursor-not-allowed disabled:opacity-60"
+                                :disabled="isImportActive()"
+                            >
+                                Uruchom import
+                            </button>
+
+                            <p x-show="error" x-text="error" x-cloak class="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-xs text-rose-200"></p>
+                        </form>
+                    </article>
+
+                    <article class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl" x-cloak>
+                        <h2 class="text-xl font-semibold text-slate-100">Status ostatniego importu</h2>
+
+                        <template x-if="job">
+                            <div>
+                                <ul class="mt-4 space-y-2 text-sm text-slate-300">
+                                    <li>
+                                        <span class="text-slate-500">Tryb:</span>
+                                        <span class="font-medium text-slate-100" x-text="job.mode_label"></span>
+                                    </li>
+                                    <li>
+                                        <span class="text-slate-500">Status:</span>
+                                        <span class="font-mono text-xs uppercase tracking-widest" :class="job.status_badge_class" x-text="job.status_label"></span>
+                                    </li>
+                                    <li>
+                                        <span class="text-slate-500">Postęp:</span>
+                                        <span x-text="job.progress_percent + '%'" class="font-medium text-slate-100"></span>
+                                    </li>
+                                    <li>
+                                        <span class="text-slate-500">Etap:</span>
+                                        <span x-text="job.current_stage ? job.current_stage : '—'"></span>
+                                    </li>
+                                    <li>
+                                        <span class="text-slate-500">Start:</span>
+                                        <span x-text="job.started_at_human ? job.started_at_human : '—'"></span>
+                                    </li>
+                                    <li>
+                                        <span class="text-slate-500">Zakończenie:</span>
+                                        <span x-text="job.finished_at_human ? job.finished_at_human : '—'"></span>
+                                    </li>
+                                </ul>
+
+                                <div class="mt-4 h-2 w-full rounded-full bg-slate-800">
+                                    <div class="h-full rounded-full bg-lime-400 transition-all" :style="`width: ${Math.min(job.progress_percent, 100)}%`"></div>
+                                </div>
+
+                                <template x-if="job.error_message">
+                                    <p class="mt-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-xs text-rose-200" x-text="job.error_message"></p>
+                                </template>
+
+                                <template x-if="events.length > 0">
+                                    <div class="mt-6 space-y-3">
+                                        <p class="text-xs uppercase tracking-widest text-slate-500">Ostatnie zdarzenia</p>
+                                        <ul class="space-y-2 text-xs text-slate-400">
+                                            <template x-for="event in events" :key="event.created_at_iso + event.type">
+                                                <li class="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                                                    <div class="flex items-center justify-between">
+                                                        <span class="font-mono text-[10px] uppercase tracking-widest text-slate-500" x-text="event.type_label"></span>
+                                                        <span class="text-[11px] text-slate-500" x-text="event.created_at_human"></span>
+                                                    </div>
+                                                    <p class="mt-1 text-slate-300" x-text="event.message"></p>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <template x-if="!job">
+                            <p class="mt-4 text-sm text-slate-400">
+                                Nie uruchamiano jeszcze importu dla bieżącego pliku.
+                            </p>
+                        </template>
+                    </article>
+                </section>
+            {% endif %}
+
             <section id="activity" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
                 <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                     <div>
@@ -171,6 +293,74 @@
                     </table>
                 </div>
             </section>
+            <script>
+                document.addEventListener('alpine:init', () => {
+                    Alpine.data('importStatusComponent', ({ pollUrl, initialJob, initialEvents, selectedMode }) => ({
+                        pollUrl,
+                        job: initialJob,
+                        events: Array.isArray(initialEvents) ? initialEvents : [],
+                        selectedMode,
+                        error: null,
+                        timer: null,
+                        init() {
+                            if (this.shouldPoll()) {
+                                void this.startPolling();
+                            }
+                        },
+                        shouldPoll() {
+                            return this.job !== null && ['queued', 'running'].includes(this.job.status);
+                        },
+                        async startPolling() {
+                            this.stopPolling();
+                            await this.poll(true);
+                            if (this.shouldPoll()) {
+                                this.timer = setInterval(() => {
+                                    void this.poll(false);
+                                }, 5000);
+                            }
+                        },
+                        stopPolling() {
+                            if (this.timer !== null) {
+                                clearInterval(this.timer);
+                                this.timer = null;
+                            }
+                        },
+                        async poll(initial = false) {
+                            try {
+                                const response = await fetch(this.pollUrl, {
+                                    headers: { 'Accept': 'application/json' },
+                                });
+                                const data = await response.json();
+
+                                if (data.error) {
+                                    this.error = data.error;
+                                    if (!initial) {
+                                        this.stopPolling();
+                                    }
+
+                                    return;
+                                }
+
+                                this.error = null;
+                                this.job = data.job;
+                                this.events = Array.isArray(data.events) ? data.events : [];
+
+                                if (!this.shouldPoll()) {
+                                    this.stopPolling();
+                                }
+                            } catch (error) {
+                                this.error = 'Nie udało się odświeżyć statusu importu.';
+                                if (!initial) {
+                                    this.stopPolling();
+                                }
+                            }
+                        },
+                        isImportActive() {
+                            return this.shouldPoll();
+                        },
+                    }));
+                });
+            </script>
         </main>
     </div>
 {% endblock %}

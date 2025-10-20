@@ -71,11 +71,18 @@ services:
     container_name: mlt-etl
     restart: unless-stopped
     working_dir: /opt/multilotka
-    command: ["sleep", "infinity"]
+    command:
+      [
+        "sh",
+        "-c",
+        "PYTHONWARNINGS=ignore RUNNING_IN_CONTAINER=1 python -m pip install --no-warn-script-location --no-cache-dir -r /opt/multilotka/docker/python/requirements.txt >/tmp/pip.log && python /opt/multilotka/python/run_etl.py",
+      ]
     volumes:
       - ../:/opt/multilotka
     env_file:
       - ../.env
+    environment:
+      - WORKSPACE_PATH=/opt/multilotka/app
     depends_on:
       - db
       - dbh

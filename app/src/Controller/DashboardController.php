@@ -6,8 +6,14 @@ namespace Multilotka\Controller;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception as DBALException;
+use JsonException;
 use Multilotka\Core\RedirectResponse;
 use Multilotka\Core\SessionManager;
+use Multilotka\Import\ImportFormatter;
+use Multilotka\Import\ImportJobEvent;
+use Multilotka\Import\ImportJobEventRepository;
+use Multilotka\Import\ImportJobRepository;
+use Multilotka\Import\ImportMode;
 use Multilotka\Import\UploadedFileRepository;
 use Multilotka\Import\UploadedFileRecord;
 use Multilotka\Support\UserRepository;
@@ -17,6 +23,8 @@ final class DashboardController
 {
     private UserRepository $users;
     private UploadedFileRepository $uploads;
+    private ImportJobRepository $importJobs;
+    private ImportJobEventRepository $importJobEvents;
 
     public function __construct(
         private readonly Environment $twig,
@@ -25,6 +33,8 @@ final class DashboardController
     ) {
         $this->users = new UserRepository($connection);
         $this->uploads = new UploadedFileRepository($connection);
+        $this->importJobs = new ImportJobRepository($connection);
+        $this->importJobEvents = new ImportJobEventRepository($connection);
     }
 
     public function index(): string|RedirectResponse
@@ -57,11 +67,31 @@ final class DashboardController
         }
 
         $lastUpload = null;
+        $lastImportJob = null;
+        $importEvents = [];
         $uploadError = null;
 
         try {
             $record = $this->uploads->latestValidated();
-            $lastUpload = $record !== null ? $this->toTemplatePayload($record) : null;
+            if ($record !== null) {
+                $lastUpload = $this->toTemplatePayload($record);
+
+                if ($record->id() !== null) {
+                    try {
+                        $job = $this->importJobs->findLatestForFile($record->id());
+                        if ($job !== null && $job->id() !== null) {
+                            $lastImportJob = ImportFormatter::formatJob($job);
+                            $events = $this->importJobEvents->findRecentForJob($job->id(), 10);
+                            $importEvents = array_map(
+                                static fn (ImportJobEvent $event): array => ImportFormatter::formatEvent($event),
+                                $events,
+                            );
+                        }
+                    } catch (DBALException|JsonException) {
+                        $flashes['error_import'] = 'Nie udało się pobrać statusu importu.';
+                    }
+                }
+            }
         } catch (DBALException) {
             $uploadError = 'Nie udało się odczytać informacji o ostatnim pliku.';
         }
@@ -70,12 +100,32 @@ final class DashboardController
             $flashes['error_upload'] = $uploadError;
         }
 
+        $importModes = [
+            [
+                'value' => ImportMode::FULL->value,
+                'label' => 'Pełny import (ponowne przeliczenie całości)',
+            ],
+            [
+                'value' => ImportMode::INCREMENTAL->value,
+                'label' => 'Import przyrostowy (tylko nowe losowania)',
+            ],
+        ];
+
+        $selectedMode = (string) $this->session->get('last_import_mode', ImportMode::FULL->value);
+
+        $importStatusUrl = '/dashboard/import/status' . ($lastUpload !== null ? '?file_id=' . $lastUpload['id'] : '');
+
         return $this->twig->render('dashboard/index.html.twig', [
             'pageTitle' => 'Panel główny',
             'user' => $user,
             'errorMessage' => null,
             'flashes' => $flashes,
             'lastUpload' => $lastUpload,
+            'lastImportJob' => $lastImportJob,
+            'importEvents' => $importEvents,
+            'importModes' => $importModes,
+            'selectedImportMode' => $selectedMode,
+            'importStatusUrl' => $importStatusUrl,
         ]);
     }
 
@@ -85,6 +135,7 @@ final class DashboardController
     private function toTemplatePayload(UploadedFileRecord $record): array
     {
         return [
+            'id' => $record->id(),
             'originalName' => $record->originalName(),
             'storedPath' => $record->storedPath(),
             'rowsTotal' => $record->rowsTotal(),

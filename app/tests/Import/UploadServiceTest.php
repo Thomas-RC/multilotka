@@ -195,6 +195,11 @@ final class FakeUploadedFileRepository implements UploadedFileRepositoryInterfac
         return $this->latest;
     }
 
+    public function findById(int $id): ?UploadedFileRecord
+    {
+        return $this->records[$id] ?? null;
+    }
+
     public function save(UploadedFileRecord $record): UploadedFileRecord
     {
         $id = count($this->records) + 1;
