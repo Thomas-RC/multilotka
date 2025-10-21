@@ -131,7 +131,7 @@ final class ImportController
                 ], JSON_UNESCAPED_UNICODE);
             }
 
-            $events = $this->events->findRecentForJob($job->id(), 20);
+            $events = $this->events->findRecentForJob($job->id(), 3);
 
             return json_encode([
                 'job' => ImportFormatter::formatJob($job),

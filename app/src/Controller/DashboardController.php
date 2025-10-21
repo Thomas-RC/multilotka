@@ -7,6 +7,7 @@ namespace Multilotka\Controller;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception as DBALException;
 use JsonException;
+use Multilotka\Core\ClickHouseConnection;
 use Multilotka\Core\RedirectResponse;
 use Multilotka\Core\SessionManager;
 use Multilotka\Import\ImportFormatter;
@@ -81,7 +82,7 @@ final class DashboardController
                         $job = $this->importJobs->findLatestForFile($record->id());
                         if ($job !== null && $job->id() !== null) {
                             $lastImportJob = ImportFormatter::formatJob($job);
-                            $events = $this->importJobEvents->findRecentForJob($job->id(), 10);
+                            $events = $this->importJobEvents->findRecentForJob($job->id(), 3);
                             $importEvents = array_map(
                                 static fn (ImportJobEvent $event): array => ImportFormatter::formatEvent($event),
                                 $events,
@@ -115,6 +116,9 @@ final class DashboardController
 
         $importStatusUrl = '/dashboard/import/status' . ($lastUpload !== null ? '?file_id=' . $lastUpload['id'] : '');
 
+        // Sprawdź czy w ClickHouse są dane do generowania tipów
+        $hasTipData = $this->checkClickHouseData();
+
         return $this->twig->render('dashboard/index.html.twig', [
             'pageTitle' => 'Panel główny',
             'user' => $user,
@@ -126,6 +130,7 @@ final class DashboardController
             'importModes' => $importModes,
             'selectedImportMode' => $selectedMode,
             'importStatusUrl' => $importStatusUrl,
+            'hasTipData' => $hasTipData,
         ]);
     }
 
@@ -143,5 +148,22 @@ final class DashboardController
             'drawDateEnd' => $record->drawDateEnd(),
             'uploadedAt' => $record->uploadedAt(),
         ];
+    }
+
+    /**
+     * Sprawdza czy w ClickHouse są dane losowań potrzebne do generowania tipów
+     */
+    private function checkClickHouseData(): bool
+    {
+        try {
+            $clickhouse = ClickHouseConnection::create();
+            $result = $clickhouse->select('SELECT count(DISTINCT draw_number) as total FROM analytics.draws');
+            $rows = $result->rows();
+
+            return isset($rows[0]['total']) && (int) $rows[0]['total'] > 0;
+        } catch (\Exception) {
+            // W przypadku błędu połączenia z ClickHouse, ukrywamy przycisk
+            return false;
+        }
     }
 }

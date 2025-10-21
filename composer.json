@@ -8,20 +8,21 @@
         "doctrine/migrations": "^3.7",
         "symfony/mailer": "^7.0",
         "symfony/mime": "^7.0",
-        "twig/twig": "^3.8"
+        "twig/twig": "^3.8",
+        "smi2/phpclickhouse": "^1.6"
     },
     "autoload": {
         "psr-4": {
-            "Multilotka\\": "src/"
+            "Multilotka\\": "app/src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Multilotka\\Tests\\": "tests/"
+            "Multilotka\\Tests\\": "app/tests/"
         }
     },
     "scripts": {
-        "test": "vendor/bin/phpunit --testdox"
+        "test": "cd app && php ../vendor/bin/phpunit --testdox"
     },
     "require-dev": {
         "phpunit/phpunit": "^10.5"

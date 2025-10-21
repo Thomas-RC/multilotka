@@ -11,6 +11,8 @@ use Multilotka\Controller\ImportController;
 use Multilotka\Controller\LoginController;
 use Multilotka\Controller\LogoutController;
 use Multilotka\Controller\RegistrationController;
+use Multilotka\Controller\StatsController;
+use Multilotka\Controller\TipController;
 use Multilotka\Controller\UploadController;
 use Twig\Environment;
 
@@ -53,11 +55,23 @@ final class Application
             '/dashboard/upload' => [
                 'POST' => [UploadController::class, 'handle'],
             ],
+            '/dashboard/upload/from-url' => [
+                'POST' => [UploadController::class, 'handleFromUrl'],
+            ],
             '/dashboard/import' => [
                 'POST' => [ImportController::class, 'trigger'],
             ],
             '/dashboard/import/status' => [
                 'GET' => [ImportController::class, 'status'],
+            ],
+            '/dashboard/tips' => [
+                'GET' => [TipController::class, 'index'],
+            ],
+            '/dashboard/tips/generate' => [
+                'POST' => [TipController::class, 'generate'],
+            ],
+            '/dashboard/stats' => [
+                'GET' => [StatsController::class, 'index'],
             ],
         ];
     }

@@ -8,7 +8,7 @@ use Multilotka\Core\Environment;
 use Multilotka\Core\SessionManager;
 use Multilotka\Core\TwigFactory;
 
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/../../vendor/autoload.php';
 
 Environment::bootstrap();
 

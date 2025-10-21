@@ -36,7 +36,7 @@ def get_db_connection() -> pymysql.connections.Connection:
 def get_clickhouse_client() -> Client:
     return Client(
         host=os.getenv("CLICKHOUSE_HOST", "dbh"),
-        port=int(os.getenv("CLICKHOUSE_PORT", "9000")),
+        port=int(os.getenv("CLICKHOUSE_NATIVE_PORT", "9000")),
         user=os.getenv("CLICKHOUSE_USER", "default"),
         password=os.getenv("CLICKHOUSE_PASSWORD", ""),
         database=os.getenv("CLICKHOUSE_DATABASE", "analytics"),
@@ -292,6 +292,28 @@ def update_import_run_state(
     )
 
 
+def refresh_combo_aggregates_incremental(client: Client, job_id: int) -> None:
+    """
+    Aktualizuje combo_aggregates tylko dla kombinacji z danego importu.
+    Używa INSERT, więc AggregatingMergeTree automatycznie zmerguje z istniejącymi danymi.
+    """
+    client.execute(
+        """
+        INSERT INTO analytics.combo_aggregates
+        SELECT
+            combo,
+            sumState(toUInt64(count)) AS total_hits,
+            uniqExactState(bitShiftLeft(toUInt64(toRelativeDayNum(draw_date)), 32) + toUInt64(draw_number)) AS unique_draws,
+            minState(draw_date) AS first_draw_date,
+            maxState(draw_date) AS last_draw_date
+        FROM analytics.draw_combinations
+        WHERE import_job_id = %(job_id)s
+        GROUP BY combo
+        """,
+        {"job_id": job_id},
+    )
+
+
 def fetch_max_draw_number(client: Client) -> int:
     result = client.execute(
         """
@@ -532,6 +554,12 @@ def process_job(conn: pymysql.connections.Connection, job: Dict[str, Any]) -> No
 
         if mode == "full":
             mark_previous_runs_failed(clickhouse_client, job_id)
+
+        # Aktualizuj agregaty dla nowych kombinacji
+        if combos_inserted > 0:
+            log(f"Job {job_id}: aktualizuję agregaty kombinacji...")
+            refresh_combo_aggregates_incremental(clickhouse_client, job_id)
+            log(f"Job {job_id}: agregaty zaktualizowane")
 
         message_parts = [
             f"Import zakończony. Przetworzono {draws_processed} losowań.",

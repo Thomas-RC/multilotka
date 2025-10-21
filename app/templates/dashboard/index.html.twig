@@ -7,6 +7,31 @@
                 display: none !important;
             }
         </style>
+        <script>
+            document.addEventListener('alpine:init', () => {
+                // Store globalny dla statusu importu
+                Alpine.store('importStatus', {
+                    isActive: {{ (lastImportJob and (lastImportJob.status == 'queued' or lastImportJob.status == 'running')) ? 'true' : 'false' }},
+                    updateStatus(job) {
+                        this.isActive = job !== null && ['queued', 'running'].includes(job.status);
+                    }
+                });
+
+                // Komponent kontrolera przycisku "Tipy na dziś"
+                Alpine.data('tipButtonController', (hasTipData) => ({
+                    hasTipData,
+                    canAccessTips() {
+                        return this.hasTipData && !this.$store.importStatus.isActive;
+                    },
+                    getTipButtonTitle() {
+                        if (this.$store.importStatus.isActive) {
+                            return 'Import w trakcie. Poczekaj na zakończenie importu.';
+                        }
+                        return 'Brak danych w bazie ClickHouse. Wgraj i przetwórz plik, aby wygenerować tipy.';
+                    }
+                }));
+            });
+        </script>
         <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
             <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
                 <div>
@@ -20,7 +45,24 @@
                         </p>
                     {% endif %}
                 </div>
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-4" x-data="tipButtonController({{ hasTipData ? 'true' : 'false' }})">
+                    <a href="/dashboard/stats" class="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 transition hover:border-lime-400 hover:text-lime-300">
+                        Statystyki
+                    </a>
+                    <template x-if="canAccessTips()">
+                        <a href="/dashboard/tips" class="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 transition hover:border-lime-400 hover:text-lime-300">
+                            Tipy na dziś
+                        </a>
+                    </template>
+                    <template x-if="!canAccessTips()">
+                        <button
+                            disabled
+                            :title="getTipButtonTitle()"
+                            class="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-500 cursor-not-allowed opacity-50"
+                        >
+                            Tipy na dziś
+                        </button>
+                    </template>
                     <button class="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 transition hover:border-lime-400 hover:text-lime-300">
                         Eksportuj raport
                     </button>
@@ -84,14 +126,33 @@
                     {% endif %}
                 </article>
 
-                <article class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
+                <article class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl" x-data="{ activeTab: 'file' }">
                     <h2 class="text-xl font-semibold text-slate-100">Wgraj nowy plik</h2>
                     <p class="mt-2 text-sm text-slate-400">
                         Akceptujemy wyłącznie pliki tekstowe (<code class="rounded bg-slate-800 px-1">*.txt</code>) w formacie:
                         <span class="font-mono text-xs text-slate-300">n. DD.MM.RRRR l1,l2,...,l20</span>.
                     </p>
 
-                    <form method="POST" action="/dashboard/upload" enctype="multipart/form-data" class="mt-6 space-y-4">
+                    <!-- Tabs -->
+                    <div class="mt-4 flex gap-2 border-b border-slate-800">
+                        <button
+                            @click="activeTab = 'file'"
+                            :class="activeTab === 'file' ? 'border-lime-400 text-lime-400' : 'border-transparent text-slate-400 hover:text-slate-300'"
+                            class="border-b-2 px-4 py-2 text-sm font-medium transition"
+                        >
+                            Z komputera
+                        </button>
+                        <button
+                            @click="activeTab = 'url'"
+                            :class="activeTab === 'url' ? 'border-lime-400 text-lime-400' : 'border-transparent text-slate-400 hover:text-slate-300'"
+                            class="border-b-2 px-4 py-2 text-sm font-medium transition"
+                        >
+                            Z URL
+                        </button>
+                    </div>
+
+                    <!-- File Upload Form -->
+                    <form method="POST" action="/dashboard/upload" enctype="multipart/form-data" class="mt-6 space-y-4" x-show="activeTab === 'file'" x-cloak>
                         <div>
                             <label for="drawFile" class="text-sm font-medium text-slate-200">Plik losowań</label>
                             <input
@@ -108,6 +169,31 @@
                             class="rounded-lg bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-lime-300"
                         >
                             Wgraj plik
+                        </button>
+                    </form>
+
+                    <!-- URL Download Form -->
+                    <form method="POST" action="/dashboard/upload/from-url" class="mt-6 space-y-4" x-show="activeTab === 'url'" x-cloak>
+                        <div>
+                            <label for="url" class="text-sm font-medium text-slate-200">Adres URL</label>
+                            <input
+                                type="url"
+                                id="url"
+                                name="url"
+                                value="http://www.mbnet.com.pl/ml.txt"
+                                placeholder="http://www.mbnet.com.pl/ml.txt"
+                                required
+                                class="mt-2 block w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
+                            >
+                            <p class="mt-1 text-xs text-slate-500">
+                                Domyślnie: oficjalne losowania Multi Multi Lotto
+                            </p>
+                        </div>
+                        <button
+                            type="submit"
+                            class="rounded-lg bg-lime-400 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-lime-300"
+                        >
+                            Pobierz i wgraj
                         </button>
                     </form>
                 </article>
@@ -206,7 +292,7 @@
                                     <div class="mt-6 space-y-3">
                                         <p class="text-xs uppercase tracking-widest text-slate-500">Ostatnie zdarzenia</p>
                                         <ul class="space-y-2 text-xs text-slate-400">
-                                            <template x-for="event in events" :key="event.created_at_iso + event.type">
+                                            <template x-for="(event, index) in events" :key="index">
                                                 <li class="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
                                                     <div class="flex items-center justify-between">
                                                         <span class="font-mono text-[10px] uppercase tracking-widest text-slate-500" x-text="event.type_label"></span>
@@ -344,6 +430,9 @@
                                 this.error = null;
                                 this.job = data.job;
                                 this.events = Array.isArray(data.events) ? data.events : [];
+
+                                // Aktualizuj globalny store statusu importu
+                                Alpine.store('importStatus').updateStatus(this.job);
 
                                 if (!this.shouldPoll()) {
                                     this.stopPolling();

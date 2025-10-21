@@ -73,4 +73,62 @@ final class UploadController
 
         return new RedirectResponse('/dashboard');
     }
+
+    public function handleFromUrl(): RedirectResponse
+    {
+        if (!$this->session->has('user_id')) {
+            $this->session->flash('error', 'Zaloguj się, aby pobierać pliki.');
+
+            return new RedirectResponse('/login');
+        }
+
+        $url = trim((string) ($_POST['url'] ?? ''));
+        if ($url === '') {
+            $this->session->flash('error', 'Nie podano adresu URL.');
+
+            return new RedirectResponse('/dashboard');
+        }
+
+        // Sprawdź czy URL jest prawidłowy
+        if (!filter_var($url, FILTER_VALIDATE_URL)) {
+            $this->session->flash('error', 'Podany adres URL jest nieprawidłowy.');
+
+            return new RedirectResponse('/dashboard');
+        }
+
+        $repository = new UploadedFileRepository($this->connection);
+        $validator = new UploadedFileValidator();
+        $projectRoot = dirname(__DIR__, 2);
+        $service = new UploadService($repository, $validator, $projectRoot);
+
+        try {
+            $saved = $service->handleFromUrl($url, (int) $this->session->get('user_id'));
+
+            $start = $saved->drawDateStart()?->format('d.m.Y') ?? 'brak danych';
+            $end = $saved->drawDateEnd()?->format('d.m.Y') ?? 'brak danych';
+
+            if ($saved->id() !== null) {
+                $this->session->set('last_uploaded_file_id', $saved->id());
+            }
+
+            $this->session->flash(
+                'success',
+                sprintf(
+                    'Plik "%s" został pobrany z URL (%d losowań, zakres %s – %s).',
+                    $saved->originalName(),
+                    $saved->rowsTotal(),
+                    $start,
+                    $end,
+                ),
+            );
+        } catch (UploadValidationException $exception) {
+            $this->session->flash('error', $exception->getMessage());
+        } catch (DBALException) {
+            $this->session->flash('error', 'Nie udało się zapisać metadanych pliku. Spróbuj ponownie później.');
+        } catch (Throwable) {
+            $this->session->flash('error', 'Wystąpił nieoczekiwany błąd podczas pobierania pliku.');
+        }
+
+        return new RedirectResponse('/dashboard');
+    }
 }
