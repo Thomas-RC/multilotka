@@ -195,12 +195,12 @@ def chunked(iterable: Iterable[Any], size: int) -> Iterable[List[Any]]:
         yield buffer
 
 
-def insert_draws(client: Client, rows: List[Tuple[date, int, List[int], str, int]]) -> None:
+def insert_draws(client: Client, rows: List[Tuple[date, int, List[int], str, int, int]]) -> None:
     if not rows:
         return
     client.execute(
         """
-        INSERT INTO analytics.draws (draw_date, draw_number, numbers, source_file_sha256, import_job_id)
+        INSERT INTO analytics.draws (draw_date, draw_number, numbers, source_file_sha256, import_job_id, import_group_id)
         VALUES
         """,
         rows,
@@ -209,13 +209,13 @@ def insert_draws(client: Client, rows: List[Tuple[date, int, List[int], str, int
 
 def insert_combinations(
     client: Client,
-    rows: List[Tuple[str, date, int, int, int]],
+    rows: List[Tuple[str, date, int, int, int, int]],
 ) -> None:
     if not rows:
         return
     client.execute(
         """
-        INSERT INTO analytics.draw_combinations (combo, draw_date, draw_number, count, import_job_id)
+        INSERT INTO analytics.draw_combinations (combo, draw_date, draw_number, count, import_job_id, import_group_id)
         VALUES
         """,
         rows,
@@ -225,6 +225,7 @@ def insert_combinations(
 def register_import_run(
     client: Client,
     job_id: int,
+    group_id: int,
     mode: str,
     file_sha256: str,
     started_at: datetime,
@@ -233,6 +234,7 @@ def register_import_run(
         """
         INSERT INTO analytics.import_runs (
             import_job_id,
+            import_group_id,
             mode,
             source_file_sha256,
             draws_loaded,
@@ -247,6 +249,7 @@ def register_import_run(
         [
             (
                 job_id,
+                group_id,
                 mode,
                 file_sha256,
                 0,
@@ -319,10 +322,10 @@ def fetch_max_draw_number(client: Client) -> int:
         """
         SELECT max(draw_number)
         FROM analytics.draws
-        WHERE import_job_id IN (
-            SELECT import_job_id
+        WHERE import_group_id IN (
+            SELECT DISTINCT import_group_id
             FROM analytics.import_runs
-            WHERE status = 'succeeded'
+            WHERE status = 'succeeded' AND import_group_id > 0
         )
         """
     )
@@ -332,15 +335,44 @@ def fetch_max_draw_number(client: Client) -> int:
     return int(max_value) if max_value is not None else 0
 
 
-def mark_previous_runs_failed(client: Client, job_id: int) -> None:
+def get_current_import_group(client: Client) -> int:
+    """
+    Pobiera ID aktualnej grupy importu (ostatnia grupa ze statusem succeeded).
+    Zwraca 0 jeśli nie ma żadnej udanej grupy.
+    """
+    result = client.execute(
+        """
+        SELECT max(import_group_id)
+        FROM analytics.import_runs
+        WHERE status = 'succeeded' AND import_group_id > 0
+        """
+    )
+    if not result or result[0][0] is None:
+        return 0
+    return int(result[0][0])
+
+
+def mark_previous_groups_failed(client: Client, current_group_id: int) -> None:
+    """
+    Oznacza wszystkie poprzednie grupy importu jako failed.
+    Używane przy pełnym imporcie, który tworzy nową grupę.
+    """
     client.execute(
         """
         ALTER TABLE analytics.import_runs
         UPDATE status = 'failed'
-        WHERE import_job_id != %(job_id)s AND status = 'succeeded'
+        WHERE import_group_id != %(group_id)s AND import_group_id > 0 AND status = 'succeeded'
         """,
-        {"job_id": job_id},
+        {"group_id": current_group_id},
     )
+
+
+def clear_combo_aggregates(client: Client) -> None:
+    """
+    Czyści tabelę combo_aggregates przy pełnym imporcie.
+    Używane aby usunąć stare zagregowane dane przed dodaniem nowych.
+    """
+    client.execute("TRUNCATE TABLE analytics.combo_aggregates")
 
 
 def process_job(conn: pymysql.connections.Connection, job: Dict[str, Any]) -> None:
@@ -425,11 +457,26 @@ def process_job(conn: pymysql.connections.Connection, job: Dict[str, Any]) -> No
 
     try:
         clickhouse_client = get_clickhouse_client()
-        existing_max_draw_number = (
-            fetch_max_draw_number(clickhouse_client) if mode == "incremental" else 0
-        )
 
-        register_import_run(clickhouse_client, job_id, mode, file_sha256, started_at)
+        # Określ import_group_id w zależności od trybu
+        if mode == "full":
+            # Pełny import tworzy nową grupę
+            import_group_id = job_id
+            existing_max_draw_number = 0
+            log(f"Job {job_id}: utworzono nową grupę importu {import_group_id}")
+        else:
+            # Przyrostowy import dołącza do istniejącej grupy
+            import_group_id = get_current_import_group(clickhouse_client)
+            if import_group_id == 0:
+                # Brak poprzednich importów - traktuj jako pełny
+                import_group_id = job_id
+                existing_max_draw_number = 0
+                log(f"Job {job_id}: brak poprzednich importów, utworzono grupę {import_group_id}")
+            else:
+                existing_max_draw_number = fetch_max_draw_number(clickhouse_client)
+                log(f"Job {job_id}: dołączono do grupy {import_group_id}, max draw_number: {existing_max_draw_number}")
+
+        register_import_run(clickhouse_client, job_id, import_group_id, mode, file_sha256, started_at)
 
         with conn.cursor() as cur:
             update_job(
@@ -489,11 +536,11 @@ def process_job(conn: pymysql.connections.Connection, job: Dict[str, Any]) -> No
                     skipped_draws += 1
                     continue
 
-                draw_batch.append((draw_date, draw_number, numbers, file_sha256, job_id))
+                draw_batch.append((draw_date, draw_number, numbers, file_sha256, job_id, import_group_id))
                 draws_processed += 1
 
                 for combo in itertools.combinations(numbers, COMBINATION_SIZE):
-                    combo_batch.append((format_combo(combo), draw_date, draw_number, 1, job_id))
+                    combo_batch.append((format_combo(combo), draw_date, draw_number, 1, job_id, import_group_id))
                     if len(combo_batch) >= COMBO_BATCH_SIZE:
                         flush_combo_batch()
 
@@ -553,7 +600,11 @@ def process_job(conn: pymysql.connections.Connection, job: Dict[str, Any]) -> No
         )
 
         if mode == "full":
-            mark_previous_runs_failed(clickhouse_client, job_id)
+            mark_previous_groups_failed(clickhouse_client, import_group_id)
+            # Wyczyść stare agregaty przy pełnym imporcie
+            log(f"Job {job_id}: czyszczę stare agregaty...")
+            clear_combo_aggregates(clickhouse_client)
+            log(f"Job {job_id}: agregaty wyczyszczone")
 
         # Aktualizuj agregaty dla nowych kombinacji
         if combos_inserted > 0:

@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS analytics.draws
     draw_number UInt32 NOT NULL,
     numbers Array(UInt8) NOT NULL,
     source_file_sha256 FixedString(64) NOT NULL,
-    import_job_id UInt64 NOT NULL
+    import_job_id UInt64 NOT NULL,
+    import_group_id UInt64 NOT NULL DEFAULT 0
 )
 ENGINE = MergeTree
 PARTITION BY toYYYYMM(draw_date)
@@ -18,7 +19,8 @@ CREATE TABLE IF NOT EXISTS analytics.draw_combinations
     draw_date Date NOT NULL,
     draw_number UInt32 NOT NULL,
     count UInt8 NOT NULL DEFAULT 1,
-    import_job_id UInt64 NOT NULL
+    import_job_id UInt64 NOT NULL,
+    import_group_id UInt64 NOT NULL DEFAULT 0
 )
 ENGINE = SummingMergeTree
 PARTITION BY toYYYYMM(draw_date)
@@ -38,6 +40,7 @@ ORDER BY combo;
 CREATE TABLE IF NOT EXISTS analytics.import_runs
 (
     import_job_id UInt64 NOT NULL,
+    import_group_id UInt64 NOT NULL DEFAULT 0,
     mode Enum8('full' = 1, 'incremental' = 2) NOT NULL,
     source_file_sha256 FixedString(64) NOT NULL,
     draws_loaded UInt32 NOT NULL,
