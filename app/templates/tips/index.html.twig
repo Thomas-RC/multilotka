@@ -39,6 +39,70 @@
         {% endif %}
 
         {% if batch is not null %}
+            <!-- TOP 7 Inteligentne Rekomendacje -->
+            {% if top7_numbers is defined and top7_numbers|length > 0 %}
+            <section class="rounded-2xl border-2 border-purple-500/50 bg-gradient-to-br from-purple-900/30 via-slate-900/70 to-indigo-900/30 p-8 shadow-2xl">
+                <div class="mb-6 text-center">
+                    <p class="text-sm uppercase tracking-widest text-purple-400 mb-2">⭐ Algorytm AI</p>
+                    <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400">
+                        TOP 7 Najlepszych Liczb
+                    </h2>
+                    <p class="mt-2 text-sm text-slate-400">
+                        Uwzględnia wszystkie czynniki: tipy, zaległe, gorące, losowość, pary/trójki oraz miesięczne wzorce
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {% for item in top7_numbers %}
+                    <article class="rounded-xl border border-purple-500/30 bg-slate-900/80 p-6 shadow-lg hover:border-purple-400/50 transition group">
+                        <!-- Rank & Number -->
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-slate-900 font-bold text-xl shadow-lg group-hover:scale-110 transition">
+                                {{ '%02d'|format(item.number) }}
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-purple-400 uppercase">Score</p>
+                                <p class="text-2xl font-bold text-purple-300">{{ item.total_score }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Reason -->
+                        <p class="text-sm text-slate-300 mb-4 min-h-[40px]">
+                            {{ item.reason }}
+                        </p>
+
+                        <!-- Score Breakdown -->
+                        <div class="space-y-2 pt-4 border-t border-slate-700">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-500">Tipy</span>
+                                <span class="text-xs font-semibold text-lime-400">{{ item.breakdown.tip_frequency }}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-500">Zaległe</span>
+                                <span class="text-xs font-semibold text-amber-400">{{ item.breakdown.due_score }}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-500">Gorące</span>
+                                <span class="text-xs font-semibold text-orange-400">{{ item.breakdown.hot_score }}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-500">Miesiąc</span>
+                                <span class="text-xs font-semibold text-blue-400">{{ item.breakdown.monthly_pattern }}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-500">Pary/Trójki</span>
+                                <span class="text-xs font-semibold text-pink-400">{{ item.breakdown.pair_triple_bonus }}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-500">Losowość</span>
+                                <span class="text-xs font-semibold text-purple-400">{{ item.breakdown.randomness }}</span>
+                            </div>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
             <!-- Batch Info Card -->
             <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
                 <p class="text-sm uppercase tracking-widest text-slate-500">Informacje o zestawie</p>
@@ -133,6 +197,170 @@
                 </article>
                 {% endfor %}
             </div>
+
+            <!-- Due Numbers in Tips -->
+            {% if due_numbers_in_tips|length > 0 %}
+            <section class="rounded-2xl border border-lime-500/30 bg-gradient-to-br from-lime-900/20 to-slate-900/70 p-6 shadow-xl">
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-lime-400 mb-2">✨ Zaległe liczby w Twoich tipach</h3>
+                        <p class="text-sm text-slate-400">Algorytm uwzględnił {{ due_numbers_in_tips|length }} zaległych liczb w rekomendowanych kombinacjach</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-slate-500">Współczynnik</p>
+                        <p class="text-2xl font-bold text-lime-400">{{ ((due_numbers_in_tips|length / 20) * 100)|round }}%</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-5 sm:grid-cols-10 gap-3">
+                    {% for item in due_numbers_in_tips %}
+                        <div class="text-center group relative">
+                            <div class="w-14 h-14 mx-auto rounded-full flex items-center justify-center font-bold text-xl transition-all
+                                bg-gradient-to-br from-lime-400 to-lime-600 text-slate-900 shadow-lg shadow-lime-500/50
+                                ring-2 ring-lime-400/50 ring-offset-2 ring-offset-slate-900">
+                                {{ '%02d'|format(item.number) }}
+                            </div>
+                            <p class="text-xs text-lime-400 mt-1 font-semibold">{{ item.tip_count }}x w tipach</p>
+                            <p class="text-xs text-slate-500">{{ item.days_since_last }}d zaległe</p>
+
+                            <!-- Tooltip -->
+                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-slate-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl border border-slate-700">
+                                <strong>{{ item.days_since_last }} dni od ostatniego</strong><br>
+                                Ostatnio: {{ item.last_date }}<br>
+                                W {{ item.tip_count }} tipach
+                                <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-700/50">
+                    <p class="text-sm text-slate-400">
+                        <span class="text-lime-400 font-semibold">✓ Dobrze!</span>
+                        Algorytm preferuje liczby zaległe, co zwiększa prawdopodobieństwo trafienia.
+                    </p>
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- Hot Numbers in Tips -->
+            {% if hot_numbers_in_tips|length > 0 %}
+            <section class="rounded-2xl border border-orange-500/30 bg-gradient-to-br from-orange-900/20 to-slate-900/70 p-6 shadow-xl">
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-orange-400 mb-2">🔥 Gorące liczby w Twoich tipach</h3>
+                        <p class="text-sm text-slate-400">Algorytm uwzględnił {{ hot_numbers_in_tips|length }} najczęściej występujących liczb historycznie</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-slate-500">Współczynnik</p>
+                        <p class="text-2xl font-bold text-orange-400">{{ ((hot_numbers_in_tips|length / 20) * 100)|round }}%</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-5 sm:grid-cols-10 gap-3">
+                    {% for item in hot_numbers_in_tips %}
+                        <div class="text-center group relative">
+                            <div class="w-14 h-14 mx-auto rounded-full flex items-center justify-center font-bold text-xl transition-all
+                                bg-gradient-to-br from-orange-400 to-red-600 text-white shadow-lg shadow-orange-500/50
+                                ring-2 ring-orange-400/50 ring-offset-2 ring-offset-slate-900">
+                                {{ '%02d'|format(item.number) }}
+                            </div>
+                            <p class="text-xs text-orange-400 mt-1 font-semibold">{{ item.tip_count }}x w tipach</p>
+                            <p class="text-xs text-slate-500">{{ item.draw_count }}x w historii</p>
+
+                            <!-- Tooltip -->
+                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-slate-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl border border-slate-700">
+                                <strong>{{ item.draw_count }} wystąpień w historii</strong><br>
+                                W {{ item.tip_count }} Twoich tipach<br>
+                                <span class="text-orange-400">Hot number!</span>
+                                <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-700/50">
+                    <p class="text-sm text-slate-400">
+                        <span class="text-orange-400 font-semibold">✓ Świetnie!</span>
+                        Algorytm balansuje między liczbami często występującymi a zaległymi.
+                    </p>
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- Due Numbers Analysis -->
+            <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-100 mb-4">⏰ Wszystkie zaległe liczby (Due Numbers)</h3>
+                <p class="text-sm text-slate-400 mb-6">Liczby, które najdłużej nie pojawiły się w losowaniach - najprawdopodobniej "należne" do wylosowania</p>
+
+                <div class="grid grid-cols-5 sm:grid-cols-10 gap-3">
+                    {% for item in due_numbers %}
+                        {% set intensity = (item.days_since_last / 100 * 100)|round %}
+                        <div class="text-center group relative">
+                            <div class="w-12 h-12 mx-auto rounded-full flex items-center justify-center font-bold text-lg transition-all
+                                {% if item.days_since_last >= 100 %}bg-rose-500 text-white shadow-rose-500/50 shadow-lg{% elseif item.days_since_last >= 75 %}bg-orange-500 text-white{% elseif item.days_since_last >= 50 %}bg-yellow-500 text-slate-900{% else %}bg-slate-600 text-white{% endif %}">
+                                {{ '%02d'|format(item.number) }}
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">{{ item.days_since_last }}d</p>
+
+                            <!-- Tooltip -->
+                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-slate-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl border border-slate-700">
+                                Ostatnio: {{ item.last_date }}
+                                <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-800 flex gap-6 text-xs">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-rose-500"></div>
+                        <span class="text-slate-400">Bardzo zaległe (≥100 dni)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-orange-500"></div>
+                        <span class="text-slate-400">Zaległe (≥75 dni)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-yellow-500"></div>
+                        <span class="text-slate-400">Umiarkowanie (≥50 dni)</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Number Frequency Analysis -->
+            <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-100 mb-4">📊 Analiza liczb w tipach</h3>
+                <p class="text-sm text-slate-400 mb-6">Najczęściej występujące liczby we wszystkich wygenerowanych kombinacjach</p>
+
+                <div class="grid grid-cols-5 sm:grid-cols-10 gap-3">
+                    {% for number, count in number_frequency %}
+                        {% set percentage = (count / (combinations|length * 5) * 100)|round %}
+                        <div class="text-center">
+                            <div class="w-12 h-12 mx-auto rounded-full flex items-center justify-center font-bold text-lg transition-all
+                                {% if percentage >= 80 %}bg-lime-500 text-slate-900{% elseif percentage >= 60 %}bg-lime-600 text-white{% elseif percentage >= 40 %}bg-slate-600 text-white{% else %}bg-slate-700 text-slate-300{% endif %}">
+                                {{ '%02d'|format(number) }}
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">{{ count }}x</p>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-800 flex gap-6 text-xs">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-lime-500"></div>
+                        <span class="text-slate-400">Najczęstsze (≥80%)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-lime-600"></div>
+                        <span class="text-slate-400">Częste (≥60%)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-slate-600"></div>
+                        <span class="text-slate-400">Rzadkie (≥40%)</span>
+                    </div>
+                </div>
+            </section>
 
             <!-- Legend -->
             <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">

@@ -7,16 +7,14 @@ from datetime import date, datetime
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import pymysql
-from clickhouse_connect import get_client
-from clickhouse_connect.driver.client import Client
-from tqdm import tqdm
+from clickhouse_driver import Client
 
 COMBINATION_SIZE = 5
 EXPECTED_NUMBERS = 20
 NUMBER_MIN = 1
 NUMBER_MAX = 80
 DRAW_BATCH_SIZE = 500       # Zwiększono z 64 dla lepszej wydajności
-COMBO_BATCH_SIZE = 100_000  # Zwiększono do 100k jak w 10xdevs
+COMBO_BATCH_SIZE = 50_000   # Zwiększono z 5000 dla lepszej wydajności
 LINE_PATTERN = re.compile(
     r"^\s*(?P<number>\d+)\.\s+(?P<date>\d{2}\.\d{2}\.\d{4})\s+(?P<numbers>\d+(?:\s*,\s*\d+)*)\s*$"
 )
@@ -36,17 +34,16 @@ def get_db_connection() -> pymysql.connections.Connection:
 
 
 def get_clickhouse_client() -> Client:
-    """
-    Tworzy połączenie z ClickHouse używając clickhouse-connect (HTTP-based).
-    Znacznie szybsze niż clickhouse-driver (native protocol).
-    """
-    return get_client(
+    return Client(
         host=os.getenv("CLICKHOUSE_HOST", "dbh"),
-        port=int(os.getenv("CLICKHOUSE_PORT", "8123")),  # HTTP port zamiast native
-        username=os.getenv("CLICKHOUSE_USER", "multilotka"),
-        password=os.getenv("CLICKHOUSE_PASSWORD", "multilotka"),
+        port=int(os.getenv("CLICKHOUSE_NATIVE_PORT", "9000")),
+        user=os.getenv("CLICKHOUSE_USER", "default"),
+        password=os.getenv("CLICKHOUSE_PASSWORD", ""),
         database=os.getenv("CLICKHOUSE_DATABASE", "analytics"),
         secure=os.getenv("CLICKHOUSE_SECURE", "0") in {"1", "true", "TRUE"},
+        send_receive_timeout=int(os.getenv("CLICKHOUSE_TIMEOUT", "30")),
+        connect_timeout=int(os.getenv("CLICKHOUSE_CONNECT_TIMEOUT", "10")),
+        settings={"use_numpy": False},
     )
 
 
@@ -201,11 +198,12 @@ def chunked(iterable: Iterable[Any], size: int) -> Iterable[List[Any]]:
 def insert_draws(client: Client, rows: List[Tuple[date, int, List[int], str, int, int]]) -> None:
     if not rows:
         return
-    # clickhouse-connect używa insert() z column_names
-    client.insert(
-        'analytics.draws',
+    client.execute(
+        """
+        INSERT INTO analytics.draws (draw_date, draw_number, numbers, source_file_sha256, import_job_id, import_group_id)
+        VALUES
+        """,
         rows,
-        column_names=['draw_date', 'draw_number', 'numbers', 'source_file_sha256', 'import_job_id', 'import_group_id']
     )
 
 
@@ -215,11 +213,12 @@ def insert_combinations(
 ) -> None:
     if not rows:
         return
-    # clickhouse-connect używa insert() z column_names
-    client.insert(
-        'analytics.draw_combinations',
+    client.execute(
+        """
+        INSERT INTO analytics.draw_combinations (combo, draw_date, draw_number, count, import_job_id, import_group_id)
+        VALUES
+        """,
         rows,
-        column_names=['combo', 'draw_date', 'draw_number', 'count', 'import_job_id', 'import_group_id']
     )
 
 
@@ -231,8 +230,22 @@ def register_import_run(
     file_sha256: str,
     started_at: datetime,
 ) -> None:
-    client.insert(
-        'analytics.import_runs',
+    client.execute(
+        """
+        INSERT INTO analytics.import_runs (
+            import_job_id,
+            import_group_id,
+            mode,
+            source_file_sha256,
+            draws_loaded,
+            combinations_loaded,
+            started_at,
+            finished_at,
+            status,
+            error_message
+        )
+        VALUES
+        """,
         [
             (
                 job_id,
@@ -247,18 +260,6 @@ def register_import_run(
                 "",
             )
         ],
-        column_names=[
-            'import_job_id',
-            'import_group_id',
-            'mode',
-            'source_file_sha256',
-            'draws_loaded',
-            'combinations_loaded',
-            'started_at',
-            'finished_at',
-            'status',
-            'error_message'
-        ]
     )
 
 
@@ -272,19 +273,25 @@ def update_import_run_state(
     finished_at: Optional[datetime] = None,
     error_message: str = "",
 ) -> None:
-    # clickhouse-connect używa command() dla DDL/DML statements
-    # i nie wymaga %(param)s - używamy {param} lub parametrów pozycyjnych
-    client.command(
-        f"""
+    client.execute(
+        """
         ALTER TABLE analytics.import_runs
         UPDATE
-            status = '{status}',
-            draws_loaded = {draws_loaded},
-            combinations_loaded = {combos_loaded},
-            finished_at = '{(finished_at or datetime.utcnow()).strftime('%Y-%m-%d %H:%M:%S')}',
-            error_message = '{error_message.replace("'", "''")}'
-        WHERE import_job_id = {job_id}
-        """
+            status = %(status)s,
+            draws_loaded = %(draws)s,
+            combinations_loaded = %(combos)s,
+            finished_at = %(finished)s,
+            error_message = %(error)s
+        WHERE import_job_id = %(job_id)s
+        """,
+        {
+            "status": status,
+            "draws": draws_loaded,
+            "combos": combos_loaded,
+            "finished": finished_at or datetime.utcnow(),
+            "error": error_message,
+            "job_id": job_id,
+        },
     )
 
 
@@ -295,11 +302,11 @@ def rebuild_combo_aggregates_cache(client: Client) -> None:
     Cache jest odświeżany po każdym imporcie (full/incremental).
     """
     # Najpierw wyczyść starą zawartość
-    client.command("TRUNCATE TABLE analytics.combo_aggregates")
+    client.execute("TRUNCATE TABLE analytics.combo_aggregates")
 
     # Wstaw zagregowane dane używając FINAL dla SummingMergeTree
     # FINAL wymusza merge części przed agregacją - szybsze i mniej pamięci
-    client.command(
+    client.execute(
         """
         INSERT INTO analytics.combo_aggregates
         SELECT
@@ -315,7 +322,7 @@ def rebuild_combo_aggregates_cache(client: Client) -> None:
 
 
 def fetch_max_draw_number(client: Client) -> int:
-    result = client.query(
+    result = client.execute(
         """
         SELECT max(draw_number)
         FROM analytics.draws
@@ -326,9 +333,9 @@ def fetch_max_draw_number(client: Client) -> int:
         )
         """
     )
-    if not result.result_rows:
+    if not result:
         return 0
-    max_value = result.result_rows[0][0]
+    max_value = result[0][0]
     return int(max_value) if max_value is not None else 0
 
 
@@ -337,16 +344,16 @@ def get_current_import_group(client: Client) -> int:
     Pobiera ID aktualnej grupy importu (ostatnia grupa ze statusem succeeded).
     Zwraca 0 jeśli nie ma żadnej udanej grupy.
     """
-    result = client.query(
+    result = client.execute(
         """
         SELECT max(import_group_id)
         FROM analytics.import_runs
         WHERE status = 'succeeded' AND import_group_id > 0
         """
     )
-    if not result.result_rows or result.result_rows[0][0] is None:
+    if not result or result[0][0] is None:
         return 0
-    return int(result.result_rows[0][0])
+    return int(result[0][0])
 
 
 def mark_previous_groups_failed(client: Client, current_group_id: int) -> None:
@@ -354,12 +361,13 @@ def mark_previous_groups_failed(client: Client, current_group_id: int) -> None:
     Oznacza wszystkie poprzednie grupy importu jako failed.
     Używane przy pełnym imporcie, który tworzy nową grupę.
     """
-    client.command(
-        f"""
+    client.execute(
+        """
         ALTER TABLE analytics.import_runs
         UPDATE status = 'failed'
-        WHERE import_group_id != {current_group_id} AND import_group_id > 0 AND status = 'succeeded'
-        """
+        WHERE import_group_id != %(group_id)s AND import_group_id > 0 AND status = 'succeeded'
+        """,
+        {"group_id": current_group_id},
     )
 
 
@@ -368,7 +376,7 @@ def clear_combo_aggregates(client: Client) -> None:
     Czyści tabelę combo_aggregates przy pełnym imporcie.
     Używane aby usunąć stare zagregowane dane przed dodaniem nowych.
     """
-    client.command("TRUNCATE TABLE analytics.combo_aggregates")
+    client.execute("TRUNCATE TABLE analytics.combo_aggregates")
 
 
 def process_job(conn: pymysql.connections.Connection, job: Dict[str, Any]) -> None:

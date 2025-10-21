@@ -4,10 +4,11 @@ CREATE ROLE IF NOT EXISTS etl_writer;
 CREATE ROLE IF NOT EXISTS analytics_reader;
 
 -- Uprawnienia dla etl_writer (ETL Python worker)
-GRANT INSERT, SELECT, ALTER UPDATE ON analytics.draws TO etl_writer;
-GRANT INSERT, SELECT ON analytics.draw_combinations TO etl_writer;
-GRANT INSERT, SELECT, ALTER UPDATE ON analytics.import_runs TO etl_writer;
-GRANT INSERT, SELECT, TRUNCATE ON analytics.combo_aggregates TO etl_writer;
+-- clickhouse-connect wymaga szczegółowych uprawnień na poziomie kolumn
+GRANT ALL ON analytics.draws TO etl_writer;
+GRANT ALL ON analytics.draw_combinations TO etl_writer;
+GRANT ALL ON analytics.import_runs TO etl_writer;
+GRANT ALL ON analytics.combo_aggregates TO etl_writer;
 
 -- Uprawnienia dla analytics_reader (PHP aplikacja - odczyt)
 GRANT SELECT ON analytics.* TO analytics_reader;
