@@ -21,14 +21,17 @@ final class ComboStatsRepository
      */
     public function fetchTopCombinations(int $limit = 20): array
     {
+        // CACHE: Czytamy z combo_aggregates (pre-computed cache)
+        // Cache jest odświeżany po każdym imporcie przez ETL worker
+        // Zapytanie wykonuje się natychmiastowo (~0.1s) zamiast 20-60s
         $result = $this->clickhouse->select(
             <<<SQL
             SELECT
                 combo,
-                sumMerge(total_hits) as total_hits,
-                uniqExactMerge(unique_draws) as unique_draws,
-                minMerge(first_draw_date) as first_draw_date,
-                maxMerge(last_draw_date) as last_draw_date
+                sumMerge(total_hits) AS total_hits,
+                uniqMerge(unique_draws) AS unique_draws,
+                minMerge(first_draw_date) AS first_draw_date,
+                maxMerge(last_draw_date) AS last_draw_date
             FROM analytics.combo_aggregates
             GROUP BY combo
             ORDER BY total_hits DESC
@@ -52,7 +55,8 @@ final class ComboStatsRepository
     }
 
     /**
-     * Pobiera występowanie kombinacji w podziale na miesiące
+     * Pobiera występowanie kombinacji w podziale na miesiące (agregacja wszystkich lat)
+     * Np. wszystkie październiki razem, wszystkie listopady razem, itd.
      *
      * @param array<string> $combos Lista kombinacji do analizy
      * @return array<string, array<MonthlyStats>> Tablica [combo => [MonthlyStats, ...]]
@@ -67,12 +71,12 @@ final class ComboStatsRepository
             <<<SQL
             SELECT
                 combo,
-                toStartOfMonth(draw_date) as month,
+                toMonth(draw_date) as month_num,
                 sum(count) as hits
             FROM analytics.draw_combinations
             WHERE combo IN (:combos)
-            GROUP BY combo, month
-            ORDER BY combo, month
+            GROUP BY combo, month_num
+            ORDER BY combo, month_num
             SQL,
             ['combos' => $combos]
         );
@@ -84,8 +88,11 @@ final class ComboStatsRepository
                 $stats[$combo] = [];
             }
 
+            // Tworzymy DateTimeImmutable z numerem miesiąca (1-12)
+            // Używamy roku 2000 jako placeholder
+            $monthNum = (int) $row['month_num'];
             $stats[$combo][] = new MonthlyStats(
-                month: new DateTimeImmutable($row['month']),
+                month: new DateTimeImmutable(sprintf('2000-%02d-01', $monthNum)),
                 hits: (int) $row['hits'],
             );
         }

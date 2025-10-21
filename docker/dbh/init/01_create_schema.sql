@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS analytics.combo_aggregates
 (
     combo FixedString(14) NOT NULL,
     total_hits AggregateFunction(sum, UInt64),
-    unique_draws AggregateFunction(uniqExact, UInt64),
+    unique_draws AggregateFunction(uniq, UInt32),
     first_draw_date AggregateFunction(min, Date),
     last_draw_date AggregateFunction(max, Date)
 )

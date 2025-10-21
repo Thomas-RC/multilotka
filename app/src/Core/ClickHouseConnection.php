@@ -23,6 +23,11 @@ final class ClickHouseConnection
         $database = getenv('CLICKHOUSE_DATABASE') ?: 'analytics';
         $client->database($database);
 
+        // Zwiększony timeout dla ciężkich zapytań agregacyjnych
+        // GROUP BY na 253M rekordów wymaga więcej czasu
+        $client->setTimeout(120);      // 120 sekund na query execution
+        $client->setConnectTimeOut(10); // 10 sekund na connection
+
         return $client;
     }
 }

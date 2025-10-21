@@ -63,12 +63,19 @@ final class StatsController
             return ['labels' => [], 'datasets' => []];
         }
 
-        // Zbierz wszystkie unikalne miesiące
+        // Zbierz wszystkie unikalne miesiące (1-12)
+        // Agregujemy wszystkie lata razem
+        $monthNames = [
+            1 => 'Styczeń', 2 => 'Luty', 3 => 'Marzec', 4 => 'Kwiecień',
+            5 => 'Maj', 6 => 'Czerwiec', 7 => 'Lipiec', 8 => 'Sierpień',
+            9 => 'Wrzesień', 10 => 'Październik', 11 => 'Listopad', 12 => 'Grudzień'
+        ];
+
         $allMonths = [];
         foreach ($monthlyStats as $stats) {
             foreach ($stats as $stat) {
-                $monthKey = $stat->month->format('Y-m');
-                $allMonths[$monthKey] = $stat->month->format('m/Y');
+                $monthNum = (int) $stat->month->format('n'); // 1-12
+                $allMonths[$monthNum] = $monthNames[$monthNum];
             }
         }
         ksort($allMonths);
@@ -93,17 +100,17 @@ final class StatsController
                 continue;
             }
 
-            // Utwórz mapę miesiąc => hits
+            // Utwórz mapę miesiąc (1-12) => hits
             $monthMap = [];
             foreach ($monthlyStats[$comboKey] as $stat) {
-                $monthKey = $stat->month->format('Y-m');
-                $monthMap[$monthKey] = $stat->hits;
+                $monthNum = (int) $stat->month->format('n'); // 1-12
+                $monthMap[$monthNum] = $stat->hits;
             }
 
             // Wypełnij dane dla wszystkich miesięcy (0 jeśli brak)
             $data = [];
-            foreach (array_keys($allMonths) as $monthKey) {
-                $data[] = $monthMap[$monthKey] ?? 0;
+            foreach (array_keys($allMonths) as $monthNum) {
+                $data[] = $monthMap[$monthNum] ?? 0;
             }
 
             $colorPair = $colors[$colorIndex % count($colors)];

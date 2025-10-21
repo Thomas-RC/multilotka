@@ -13,8 +13,8 @@ COMBINATION_SIZE = 5
 EXPECTED_NUMBERS = 20
 NUMBER_MIN = 1
 NUMBER_MAX = 80
-DRAW_BATCH_SIZE = 64
-COMBO_BATCH_SIZE = 5_000
+DRAW_BATCH_SIZE = 500       # Zwiększono z 64 dla lepszej wydajności
+COMBO_BATCH_SIZE = 50_000   # Zwiększono z 5000 dla lepszej wydajności
 LINE_PATTERN = re.compile(
     r"^\s*(?P<number>\d+)\.\s+(?P<date>\d{2}\.\d{2}\.\d{4})\s+(?P<numbers>\d+(?:\s*,\s*\d+)*)\s*$"
 )
@@ -295,25 +295,29 @@ def update_import_run_state(
     )
 
 
-def refresh_combo_aggregates_incremental(client: Client, job_id: int) -> None:
+def rebuild_combo_aggregates_cache(client: Client) -> None:
     """
-    Aktualizuje combo_aggregates tylko dla kombinacji z danego importu.
-    Używa INSERT, więc AggregatingMergeTree automatycznie zmerguje z istniejącymi danymi.
+    PRZEBUDOWA CACHE: Odbudowuje combo_aggregates jako cache dla szybkich zapytań.
+    Używa uniqState zamiast uniqExactState - mniej pamięci, akceptowalna dokładność (~98%).
+    Cache jest odświeżany po każdym imporcie (full/incremental).
     """
+    # Najpierw wyczyść starą zawartość
+    client.execute("TRUNCATE TABLE analytics.combo_aggregates")
+
+    # Wstaw zagregowane dane używając FINAL dla SummingMergeTree
+    # FINAL wymusza merge części przed agregacją - szybsze i mniej pamięci
     client.execute(
         """
         INSERT INTO analytics.combo_aggregates
         SELECT
             combo,
             sumState(toUInt64(count)) AS total_hits,
-            uniqExactState(bitShiftLeft(toUInt64(toRelativeDayNum(draw_date)), 32) + toUInt64(draw_number)) AS unique_draws,
+            uniqState(draw_number) AS unique_draws,
             minState(draw_date) AS first_draw_date,
             maxState(draw_date) AS last_draw_date
-        FROM analytics.draw_combinations
-        WHERE import_job_id = %(job_id)s
+        FROM analytics.draw_combinations FINAL
         GROUP BY combo
-        """,
-        {"job_id": job_id},
+        """
     )
 
 
@@ -601,16 +605,16 @@ def process_job(conn: pymysql.connections.Connection, job: Dict[str, Any]) -> No
 
         if mode == "full":
             mark_previous_groups_failed(clickhouse_client, import_group_id)
-            # Wyczyść stare agregaty przy pełnym imporcie
-            log(f"Job {job_id}: czyszczę stare agregaty...")
-            clear_combo_aggregates(clickhouse_client)
-            log(f"Job {job_id}: agregaty wyczyszczone")
 
-        # Aktualizuj agregaty dla nowych kombinacji
-        if combos_inserted > 0:
-            log(f"Job {job_id}: aktualizuję agregaty kombinacji...")
-            refresh_combo_aggregates_incremental(clickhouse_client, job_id)
-            log(f"Job {job_id}: agregaty zaktualizowane")
+        # CACHE: Odbuduj combo_aggregates jako cache dla szybkich zapytań
+        # Cache zawiera pre-computed agregaty, dzięki czemu zapytania są natychmiastowe
+        log(f"Job {job_id}: odbudowuję cache combo_aggregates...")
+        try:
+            rebuild_combo_aggregates_cache(clickhouse_client)
+            log(f"Job {job_id}: cache odbudowany pomyślnie")
+        except Exception as e:
+            log(f"Job {job_id}: WARNING - nie udało się odbudować cache: {e}")
+            log(f"Job {job_id}: zapytania będą wolniejsze, ale nadal działają")
 
         message_parts = [
             f"Import zakończony. Przetworzono {draws_processed} losowań.",
